@@ -21,7 +21,12 @@ func Unpack(input string) (string, error) {
 		intChar, err := strconv.Atoi(char)
 		if err == nil {
 			repeatVal := intChar - 1
-			result = append(result, strings.Repeat(prvChar, repeatVal))
+			if repeatVal < 0 {
+				repeatVal = 0
+				result = result[:len(result)-1]
+			} else {
+				result = append(result, strings.Repeat(prvChar, repeatVal))
+			}
 		} else {
 			result = append(result, char)
 			prvChar = char

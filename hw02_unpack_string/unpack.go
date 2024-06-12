@@ -17,11 +17,23 @@ func Unpack(input string) (string, error) {
 	result := make([]string, 0)
 
 	// Производим повторение символов
-	for _, char := range characters {
+	for ind, char := range characters {
 		intChar, err := strconv.Atoi(char)
 		if err == nil {
+			// проверка на первую цифру или проверка на число больше 9
+			if ind == 0 || prvChar == "" {
+				return "", errors.New("некорректная строка")
+			}
+
 			repeatVal := intChar - 1
+			// проверка на отрицательное число повторений с удалением символа
+			if repeatVal < 0 {
+				repeatVal = 0
+				result = result[:len(result)-1]
+			}
+
 			result = append(result, strings.Repeat(prvChar, repeatVal))
+			prvChar = ""
 		} else {
 			result = append(result, char)
 			prvChar = char

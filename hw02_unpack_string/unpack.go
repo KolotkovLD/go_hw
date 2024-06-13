@@ -22,7 +22,7 @@ func Unpack(input string) (string, error) {
 		if err == nil {
 			// проверка на первую цифру или проверка на число больше 9
 			if ind == 0 || prvChar == "" {
-				return "", errors.New("некорректная строка")
+				return "", errors.New("invalid string") //"некорректная строка")
 			}
 
 			repeatVal := intChar - 1

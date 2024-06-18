@@ -35,15 +35,13 @@ func Unpack(input string) (string, error) {
 			result = result[:len(result)-1]
 		} else {
 			result = append(result, strings.Repeat(prvChar, repeatVal))
+			prvChar = ""
 		}
 		// проверка на отрицательное число повторений с удалением символа
 		if repeatVal < 0 {
 			repeatVal = 0
 			result = result[:len(result)-1]
 		}
-
-		result = append(result, strings.Repeat(prvChar, repeatVal))
-		prvChar = ""
 	}
 
 	// Объединяем результаты в одну строку

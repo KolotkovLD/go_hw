@@ -148,6 +148,6 @@ func TestGetMaxWord(t *testing.T) {
 
 		sameFreqWords[1] = wordCount{Word: "он", Count: 8, Length: 4}
 
-		require.Equal(t, expected, GetMaxWord(sameFreqWords))
+		require.Equal(t, expected, getMaxWord(sameFreqWords))
 	})
 }

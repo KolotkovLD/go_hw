@@ -15,8 +15,8 @@ type wordCount struct {
 	Length int
 }
 
-func GetMaxWord(listWords []wordCount) wordCount {
-	var minWord = listWords[0]
+func getMaxWord(listWords []wordCount) wordCount {
+	minWord := listWords[0]
 
 	for i := 0; i < len(listWords); i++ {
 		if listWords[i].Word < minWord.Word {
@@ -59,7 +59,7 @@ func sortSameFrequencyWord(words []wordCount, frqnc int, ind int) ([]string, int
 	lenSFWs := len(sameFreqWords)
 
 	for i := 0; (i < lenSFWs) && (ind+i < 10); i++ {
-		maxWord := GetMaxWord(sameFreqWords).Word
+		maxWord := getMaxWord(sameFreqWords).Word
 
 		sortedWords = append(sortedWords, maxWord)
 

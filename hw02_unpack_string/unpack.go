@@ -31,16 +31,11 @@ func Unpack(input string) (string, error) {
 
 		repeatVal := intChar - 1
 		if repeatVal < 0 {
-			repeatVal = 0
+			// проверка на отрицательное число повторений с удалением символа
 			result = result[:len(result)-1]
 		} else {
 			result = append(result, strings.Repeat(prvChar, repeatVal))
 			prvChar = ""
-		}
-		// проверка на отрицательное число повторений с удалением символа
-		if repeatVal < 0 {
-			repeatVal = 0
-			result = result[:len(result)-1]
 		}
 	}
 

@@ -8,7 +8,6 @@ import (
 
 var ErrInvalidString = errors.New("invalid string")
 
-// тесты сбиваются
 func Unpack(input string) (string, error) {
 	var prvChar string
 	// Разбиваем входную строку на массив символов

@@ -6,8 +6,8 @@ type Key string
 type Value string
 
 type Cache interface {
-	Set(key Key, value interface{}) bool
-	Get(key Key) (interface{}, bool)
+	Set(key Key, value interface{}, c sync.Mutex) bool
+	Get(key Key, c sync.Mutex) (interface{}, bool)
 	Clear()
 }
 
@@ -17,6 +17,7 @@ type lruCache struct {
 	capacity int
 	queue    List
 	items    map[Key]*ListItem
+	mu       sync.Mutex
 }
 
 func NewCache(capacity int) Cache {
@@ -28,30 +29,30 @@ func NewCache(capacity int) Cache {
 }
 
 // Set - метод для добавления значения в кэш по ключу
-func (c *lruCache) Set(key Key, value Value) bool {
-	c.mu.Lock()         // блокируем мьютекс для синхронизации
-	defer c.mu.Unlock() // освобождаем мьютекс после выполнения операции
+func Set(key Key, value Value, mu sync.Mutex) bool {
+	mu.Lock()         // блокируем мьютекс для синхронизации
+	defer mu.Unlock() // освобождаем мьютекс после выполнения операции
 
-	item, exists := c.cmap[key]
+	item, exists := mu.cmap[key]
 	if !exists {
-		item = c.list.PushFront(CacheItem{Key: key, Value: value})
+		item = mu.list.PushFront(CacheItem{Key: key, Value: value})
 		c.cmap[key] = item
-		if c.list.Len() > c.Capacity {
+		if mu.list.Len() > mu.Capacity {
 			// если размер списка превышает емкость кэша, удаляем последний элемент
-			c.list.Remove(c.list.Back())
-			delete(c.cmap, c.list.Back().Value.Key)
+			mu.list.Remove(mu.list.Back())
+			delete(mu.cmap, mu.list.Back().Value.Key)
 		}
 		return true
 	}
 
 	// если элемент уже существует, обновляем его значение и перемещаем в начало списка
 	item.Value = value
-	c.list.MoveToFront(item)
+	mu.list.MoveToFront(item)
 	return false
 }
 
 // Get - метод для получения значения из кэша по ключу
-func (c *lruCache) Get(key Key) (Value, bool) {
+func Get(key Key, c sync.Mutex) (Value, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

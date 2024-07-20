@@ -79,4 +79,3 @@ linters:
     - unparam
     - unused
     - whitespace
-

@@ -1,13 +1,11 @@
 package hw04lrucache
 
-import "sync"
-
 type Key string
 type Value string
 
 type Cache interface {
-	Set(key Key, value interface{}, c sync.Mutex) bool
-	Get(key Key, c sync.Mutex) (interface{}, bool)
+	Set(key Key, value interface{}) bool
+	Get(key Key) (interface{}, bool)
 	Clear()
 }
 
@@ -17,11 +15,10 @@ type lruCache struct {
 	capacity int
 	queue    List
 	items    map[Key]*ListItem
-	mu       sync.Mutex
 }
 
-func NewCache(capacity int) Cache {
-	return &lruCache{
+func NewCache(capacity int) lruCache {
+	return lruCache{
 		capacity: capacity,
 		queue:    NewList(),
 		items:    make(map[Key]*ListItem, capacity),
@@ -29,49 +26,42 @@ func NewCache(capacity int) Cache {
 }
 
 // Set - метод для добавления значения в кэш по ключу
-func Set(key Key, value Value, mu sync.Mutex) bool {
-	mu.Lock()         // блокируем мьютекс для синхронизации
-	defer mu.Unlock() // освобождаем мьютекс после выполнения операции
+func (c *lruCache) Set(key Key, value interface{}) bool {
 
-	item, exists := mu.cmap[key]
+	item, exists := c.items[key]
 	if !exists {
-		item = mu.list.PushFront(CacheItem{Key: key, Value: value})
-		c.cmap[key] = item
-		if mu.list.Len() > mu.Capacity {
+		item = c.queue.PushFront(value)
+		c.items[key] = item
+		if c.queue.Len() > c.capacity {
 			// если размер списка превышает емкость кэша, удаляем последний элемент
-			mu.list.Remove(mu.list.Back())
-			delete(mu.cmap, mu.list.Back().Value.Key)
+			c.queue.Remove(c.queue.Back())
 		}
-		return true
+		return false
 	}
 
 	// если элемент уже существует, обновляем его значение и перемещаем в начало списка
 	item.Value = value
-	mu.list.MoveToFront(item)
-	return false
+	c.queue.MoveToFront(item)
+	return true
 }
 
 // Get - метод для получения значения из кэша по ключу
-func Get(key Key, c sync.Mutex) (Value, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *lruCache) Get(key Key) (interface{}, bool) {
 
-	item, exists := c.cmap[key]
+	item, exists := c.items[key]
 	if exists {
-		c.list.MoveToFront(item)
+		c.queue.MoveToFront(item)
 		return item.Value, true
 	}
 	return nil, false
 }
 
-// Clear - метод для очистки кэша
-func (c *lruCache) Clear() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, item := range c.list.List {
-		delete(c.cmap, item.Value.Key)
-	}
-	c.cmap = make(cmap[Key] * ListItem)
-	c.list = NewList()
-}
+//// Clear - метод для очистки кэша
+//func (c *lruCache) Clear() {
+//
+//	for _, item := range c.queue {
+//		delete(c.cmap, item.Value.Key)
+//	}
+//	c.cmap = make(cmap[Key] * ListItem)
+//	c.list = NewList()
+//}

@@ -11,6 +11,7 @@ type List interface {
 }
 
 type ListItem struct {
+	Key   string
 	Value interface{}
 	Next  *ListItem
 	Prev  *ListItem

@@ -1,11 +1,8 @@
 package hw04lrucache
 
-type Key string
-type Value string
-
 type Cache interface {
-	Set(key Key, value interface{}) bool
-	Get(key Key) (interface{}, bool)
+	Set(key string, value interface{}) bool
+	Get(key string) (interface{}, bool)
 	Clear()
 }
 
@@ -14,29 +11,34 @@ type lruCache struct {
 
 	capacity int
 	queue    List
-	items    map[Key]*ListItem
+	items    map[string]*ListItem
+}
+
+type entry struct {
+	key   string
+	value interface{}
 }
 
 func NewCache(capacity int) lruCache {
 	return lruCache{
 		capacity: capacity,
 		queue:    NewList(),
-		items:    make(map[Key]*ListItem, capacity),
+		items:    make(map[string]*ListItem, capacity),
 	}
 }
 
-// Set - метод для добавления значения в кэш по ключу
-func (c *lruCache) Set(key Key, value interface{}) bool {
-
-	_, exists := c.Get(key)
-	if !exists {
-		item := c.queue.PushFront(value)
-		c.items[key] = item
-		if c.queue.Len() > c.capacity {
-			// если размер списка превышает емкость кэша, удаляем последний элемент
-			c.queue.Remove(c.queue.Back())
-		}
+// Set - метод для добавления значения в кэш по ключу.
+func (c *lruCache) Set(key string, value interface{}) bool {
+	if item, exist := c.items[key]; !exist {
+		c.queue.PushFront(item)
+		item.Value.(*entry).value = value
+		return true
+	}
+	if c.queue.Len() > c.capacity {
+		// если размер списка превышает емкость кэша, удаляем последний элемент
+		c.queue.Remove(c.queue.Back())
 		return false
+
 	} else {
 		// если элемент уже существует, обновляем его значение и перемещаем в начало списка
 		item, _ := c.items[key]
@@ -46,23 +48,11 @@ func (c *lruCache) Set(key Key, value interface{}) bool {
 	}
 }
 
-// Get - метод для получения значения из кэша по ключу
-func (c *lruCache) Get(key Key) (interface{}, bool) {
-
-	item, exists := c.items[key]
-	if exists {
+// Get - метод для получения значения из кэша по ключу.
+func (c *lruCache) Get(key string) (interface{}, bool) {
+	if item, exists := c.items[key]; exists {
 		c.queue.MoveToFront(item)
 		return item.Value, true
 	}
 	return nil, false
 }
-
-//// Clear - метод для очистки кэша
-//func (c *lruCache) Clear() {
-//
-//	for _, item := range c.queue {
-//		delete(c.cmap, item.Value.Key)
-//	}
-//	c.cmap = make(cmap[Key] * ListItem)
-//	c.list = NewList()
-//}

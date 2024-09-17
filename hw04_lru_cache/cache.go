@@ -29,30 +29,29 @@ func NewCache(capacity int) lruCache {
 
 // Set - метод для добавления значения в кэш по ключу.
 func (c *lruCache) Set(key string, value interface{}) bool {
-	if item, exist := c.items[key]; !exist {
-		c.queue.PushFront(item)
-		item.Value.(*entry).value = value
+	if item, exist := c.items[key]; exist {
+		// если элемент уже существует, обновляем его значение и перемещаем в начало списка
+		item = c.queue.MoveToFront(item)
+		c.items[key] = item
 		return true
 	}
-	if c.queue.Len() > c.capacity {
+	if c.queue.Len() == c.capacity {
 		// если размер списка превышает емкость кэша, удаляем последний элемент
 		c.queue.Remove(c.queue.Back())
-		return false
 
-	} else {
-		// если элемент уже существует, обновляем его значение и перемещаем в начало списка
-		item, _ := c.items[key]
-		item.Value = value
-		c.queue.MoveToFront(item)
-		return true
 	}
+
+	item := c.queue.PushFront(&entry{key, value})
+	c.items[key] = item
+	return false
 }
 
 // Get - метод для получения значения из кэша по ключу.
 func (c *lruCache) Get(key string) (interface{}, bool) {
 	if item, exists := c.items[key]; exists {
-		c.queue.MoveToFront(item)
-		return item.Value, true
+		item = c.queue.MoveToFront(item)
+		c.items[key] = item
+		return item.Value.(*entry).value, true
 	}
 	return nil, false
 }

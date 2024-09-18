@@ -31,17 +31,20 @@ func NewCache(capacity int) lruCache {
 func (c *lruCache) Set(key string, value interface{}) bool {
 	if item, exist := c.items[key]; exist {
 		// если элемент уже существует, обновляем его значение и перемещаем в начало списка
+		item.Value.(*entry).value = value
 		item = c.queue.MoveToFront(item)
 		c.items[key] = item
 		return true
 	}
 	if c.queue.Len() == c.capacity {
 		// если размер списка превышает емкость кэша, удаляем последний элемент
+		leastUsedValue := c.queue.Back()
 		c.queue.Remove(c.queue.Back())
-
+		delete(c.items, leastUsedValue.Value.(*entry).key)
 	}
 
-	item := c.queue.PushFront(&entry{key, value})
+	newEntry := &entry{key, value}
+	item := c.queue.PushFront(newEntry)
 	c.items[key] = item
 	return false
 }

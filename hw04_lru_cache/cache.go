@@ -6,7 +6,7 @@ type Cache interface {
 	Clear()
 }
 
-type lruCache struct {
+type LruCache struct {
 	//	Cache // Remove me after realization.
 
 	capacity int
@@ -19,8 +19,8 @@ type entry struct {
 	value interface{}
 }
 
-func NewCache(capacity int) lruCache {
-	return lruCache{
+func NewCache(capacity int) LruCache {
+	return LruCache{
 		capacity: capacity,
 		queue:    NewList(),
 		items:    make(map[string]*ListItem, capacity),
@@ -28,7 +28,7 @@ func NewCache(capacity int) lruCache {
 }
 
 // Set - метод для добавления значения в кэш по ключу.
-func (c *lruCache) Set(key string, value interface{}) bool {
+func (c *LruCache) Set(key string, value interface{}) bool {
 	if item, exist := c.items[key]; exist {
 		// если элемент уже существует, обновляем его значение и перемещаем в начало списка
 		item.Value.(*entry).value = value
@@ -50,11 +50,17 @@ func (c *lruCache) Set(key string, value interface{}) bool {
 }
 
 // Get - метод для получения значения из кэша по ключу.
-func (c *lruCache) Get(key string) (interface{}, bool) {
+func (c *LruCache) Get(key string) (interface{}, bool) {
 	if item, exists := c.items[key]; exists {
 		item = c.queue.MoveToFront(item)
 		c.items[key] = item
 		return item.Value.(*entry).value, true
 	}
 	return nil, false
+}
+
+// Clear - метод для очистки кэша.
+func (c *LruCache) Clear() {
+	c.queue = NewList()
+	c.items = make(map[string]*ListItem)
 }

@@ -2,9 +2,13 @@ package hw04lrucache
 
 import (
 	"github.com/stretchr/testify/require"
+
 	"math/rand"
+
 	"strconv"
+
 	"sync"
+
 	"testing"
 )
 

@@ -62,6 +62,5 @@ func (c *LruCache) Get(key Key) (interface{}, bool) {
 // Clear - метод для очистки кэша.
 func (c *LruCache) Clear() {
 	c.queue = NewList()
-	c.items = make(map[Key]*ListItem)
-	c.capacity = 0
+	c.items = make(map[Key]*ListItem, c.capacity)
 }

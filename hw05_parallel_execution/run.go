@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-var uErrErrorsLimitExceeded = errors.New("errors limit exceeded")
+var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
 
 type Task func() error
 

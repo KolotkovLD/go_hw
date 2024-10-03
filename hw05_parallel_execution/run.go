@@ -40,7 +40,7 @@ func Run(tasks []Task, n, m int) error {
 	close(errorChan)
 	<-doneChan
 	m32 := int32(m)
-	if errorCount >= m32 {
+	if errorCount > m32 {
 		return ErrErrorsLimitExceeded
 	}
 
@@ -84,7 +84,7 @@ func checkErr(doneChan chan struct{}, errorChan chan error, stopChan chan struct
 		if err != nil {
 			atomic.AddInt32(&errorCount, 1)
 			m32 := int32(m)
-			if errorCount >= m32 {
+			if errorCount > m32 {
 				close(stopChan)
 				return
 			}

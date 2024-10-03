@@ -3,6 +3,12 @@ package hw05parallelexecution
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
+)
+
+var (
+	wg         sync.WaitGroup
+	errorCount int32
 )
 
 var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
@@ -15,67 +21,73 @@ func Run(tasks []Task, n, m int) error {
 		m = len(tasks) + 1
 	}
 
-	var (
-		wg         sync.WaitGroup
-		errorCount int
-		errorChan  = make(chan error, len(tasks))
-		doneChan   = make(chan struct{})
-		stopChan   = make(chan struct{})
-		taskChan   = make(chan Task, len(tasks))
-	)
+	errorChan := make(chan error, len(tasks))
+	doneChan := make(chan struct{})
+	stopChan := make(chan struct{})
+	taskChan := make(chan Task, len(tasks))
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case task, ok := <-taskChan:
-					if !ok {
-						return
-					}
-					if err := task(); err != nil {
-						errorChan <- err
-					}
-				case <-stopChan:
-					return
-				}
-			}
-		}()
+		go runTask(&wg, taskChan, errorChan, stopChan)
 	}
-
 	// Заполняем канал заданий
-	go func() {
-		defer close(taskChan)
-		for _, task := range tasks {
-			select {
-			case taskChan <- task:
-			case <-stopChan:
-				return
-			}
-		}
-	}()
+	go sendTasks(taskChan, tasks, stopChan)
 
 	// Обрабатываем ошибки
-	go func() {
-		defer close(doneChan)
-		for err := range errorChan {
-			if err != nil {
-				errorCount++
-				if errorCount >= m {
-					close(stopChan)
-					return
-				}
-			}
-		}
-	}()
+	go checkErr(doneChan, errorChan, stopChan, m)
 
 	wg.Wait()
 	close(errorChan)
 	<-doneChan
-	if errorCount >= m {
+	m32 := int32(m)
+	if errorCount >= m32 {
 		return ErrErrorsLimitExceeded
 	}
 
 	return nil
+}
+
+func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, stopChan chan struct{}) {
+	// Запускает таски из канала taskChan
+	defer wg.Done()
+	for {
+		select {
+		case task, ok := <-taskChan:
+			if !ok {
+				return
+			}
+			if err := task(); err != nil {
+				errorChan <- err
+			}
+		case <-stopChan:
+			return
+		}
+	}
+}
+
+func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {
+	// Отправляет таски в канал taskChan
+	defer close(taskChan)
+	for _, task := range tasks {
+		select {
+		case taskChan <- task:
+		case <-stopChan:
+			return
+		}
+	}
+}
+
+func checkErr(doneChan chan struct{}, errorChan chan error, stopChan chan struct{}, m int) {
+	// Проверяет количество таков с ошибкой и прерывает работу оставшихся
+	defer close(doneChan)
+	for err := range errorChan {
+		if err != nil {
+			atomic.AddInt32(&errorCount, 1)
+			m32 := int32(m)
+			if errorCount >= m32 {
+				close(stopChan)
+				return
+			}
+		}
+	}
 }

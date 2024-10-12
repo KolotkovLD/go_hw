@@ -23,7 +23,6 @@ func Run(tasks []Task, n, m int) error {
 	}
 
 	errorChan := make(chan error, len(tasks))
-	doneChan := make(chan struct{})
 	stopChan := make(chan struct{})
 	taskChan := make(chan Task, len(tasks))
 
@@ -35,11 +34,10 @@ func Run(tasks []Task, n, m int) error {
 	go sendTasks(taskChan, tasks, stopChan)
 
 	// Обрабатываем ошибки
-	go checkErr(doneChan, errorChan, stopChan, m, &errorCount)
+	go checkErr(errorChan, stopChan, m, &errorCount)
 
 	wg.Wait()
 	close(errorChan)
-	<-doneChan
 	m32 := int32(m)
 	if errorCount > m32 {
 		return ErrErrorsLimitExceeded
@@ -78,9 +76,8 @@ func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {
 	}
 }
 
-func checkErr(doneChan chan struct{}, errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
+func checkErr(errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
 	// Проверяет количество таков с ошибкой и прерывает работу оставшихся
-	defer close(doneChan)
 	for err := range errorChan {
 		if err != nil {
 			atomic.AddInt32(errorCount, 1)

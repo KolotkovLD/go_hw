@@ -6,17 +6,18 @@ import (
 	"sync/atomic"
 )
 
-var (
-	wg         sync.WaitGroup
-	errorCount int32
-)
-
 var ErrErrorsLimitExceeded = errors.New("errors limit exceeded")
 
 type Task func() error
 
 // Run starts tasks in n goroutines and stops its work when receiving m errors from tasks.
 func Run(tasks []Task, n, m int) error {
+
+	var (
+		wg         sync.WaitGroup
+		errorCount int32
+	)
+
 	if m <= 0 {
 		m = len(tasks) + 1
 	}
@@ -34,7 +35,7 @@ func Run(tasks []Task, n, m int) error {
 	go sendTasks(taskChan, tasks, stopChan)
 
 	// Обрабатываем ошибки
-	go checkErr(doneChan, errorChan, stopChan, m)
+	go checkErr(doneChan, errorChan, stopChan, m, &errorCount)
 
 	wg.Wait()
 	close(errorChan)
@@ -77,14 +78,14 @@ func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {
 	}
 }
 
-func checkErr(doneChan chan struct{}, errorChan chan error, stopChan chan struct{}, m int) {
+func checkErr(doneChan chan struct{}, errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
 	// Проверяет количество таков с ошибкой и прерывает работу оставшихся
 	defer close(doneChan)
 	for err := range errorChan {
 		if err != nil {
-			atomic.AddInt32(&errorCount, 1)
+			atomic.AddInt32(errorCount, 1)
 			m32 := int32(m)
-			if errorCount > m32 {
+			if *errorCount > m32 {
 				close(stopChan)
 				return
 			}

@@ -2,6 +2,7 @@ package hw05parallelexecution
 
 import (
 	"errors"
+	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -28,7 +29,7 @@ func Run(tasks []Task, n, m int) error {
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go runTask(&wg, taskChan, errorChan, stopChan)
+		go runTask(&wg, taskChan, errorChan, stopChan, i)
 	}
 	// Заполняем канал заданий
 	go sendTasks(taskChan, tasks, stopChan)
@@ -38,30 +39,38 @@ func Run(tasks []Task, n, m int) error {
 
 	wg.Wait()
 	close(errorChan)
+	close(stopChan)
 	m32 := int32(m)
-	if errorCount > m32 {
+	if errorCount >= m32 {
 		return ErrErrorsLimitExceeded
 	}
 
 	return nil
 }
 
-func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, stopChan chan struct{}) {
+func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, stopChan chan struct{}, workerID int) {
 	// Запускает таски из канала taskChan
 	defer wg.Done()
+	log.Printf("Goroutine %d: started\n", workerID)
 	for {
 		select {
 		case task, ok := <-taskChan:
 			if !ok {
+				log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
 				return
 			}
+			log.Printf("Goroutine %d: received a task\n", workerID)
 			if err := task(); err != nil {
+				log.Printf("Goroutine %d: task returned error: %v\n", workerID, err)
 				errorChan <- err
 			}
 		case <-stopChan:
-			return
+			log.Printf("Goroutine %d: stopChan closed, exiting\n", workerID)
+			break
+			//return
 		}
 	}
+	return
 }
 
 func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {
@@ -82,8 +91,8 @@ func checkErr(errorChan chan error, stopChan chan struct{}, m int, errorCount *i
 		if err != nil {
 			atomic.AddInt32(errorCount, 1)
 			m32 := int32(m)
-			if *errorCount > m32 {
-				close(stopChan)
+			if *errorCount >= m32 {
+				stopChan <- struct{}{}
 				return
 			}
 		}

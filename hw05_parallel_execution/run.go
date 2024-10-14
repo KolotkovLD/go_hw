@@ -29,7 +29,7 @@ func Run(tasks []Task, n, m int) error {
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go runTask(&wg, taskChan, errorChan, stopChan, i)
+		go runTask(&wg, taskChan, errorChan, stopChan, i, &errorCount)
 	}
 	// Заполняем канал заданий
 	go sendTasks(taskChan, tasks, stopChan)
@@ -48,7 +48,7 @@ func Run(tasks []Task, n, m int) error {
 	return nil
 }
 
-func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, stopChan chan struct{}, workerID int) {
+func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, stopChan chan struct{}, workerID int, errorCount *int32) {
 	// Запускает таски из канала taskChan
 	defer wg.Done()
 	log.Printf("Goroutine %d: started\n", workerID)
@@ -61,16 +61,14 @@ func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, sto
 			}
 			log.Printf("Goroutine %d: received a task\n", workerID)
 			if err := task(); err != nil {
-				log.Printf("Goroutine %d: task returned error: %v\n", workerID, err)
+				log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
 				errorChan <- err
 			}
 		case <-stopChan:
 			log.Printf("Goroutine %d: stopChan closed, exiting\n", workerID)
-			break
-			//return
+			return
 		}
 	}
-	return
 }
 
 func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {

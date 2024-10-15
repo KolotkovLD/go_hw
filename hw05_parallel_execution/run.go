@@ -35,11 +35,12 @@ func Run(tasks []Task, n, m int) error {
 	go sendTasks(taskChan, tasks, stopChan)
 
 	// Обрабатываем ошибки
-	go checkErr(errorChan, stopChan, m, &errorCount)
+	go checkErr(taskChan, errorChan, stopChan, m, &errorCount)
 
 	wg.Wait()
 	close(errorChan)
 	close(stopChan)
+
 	m32 := int32(m)
 	if errorCount >= m32 {
 		return ErrErrorsLimitExceeded
@@ -54,6 +55,9 @@ func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, sto
 	log.Printf("Goroutine %d: started\n", workerID)
 	for {
 		select {
+		case <-stopChan:
+			log.Printf("Goroutine %d: stopChan closed, exiting\n", workerID)
+			return
 		case task, ok := <-taskChan:
 			if !ok {
 				log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
@@ -64,16 +68,20 @@ func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, sto
 				log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
 				errorChan <- err
 			}
-		case <-stopChan:
-			log.Printf("Goroutine %d: stopChan closed, exiting\n", workerID)
-			return
 		}
 	}
 }
 
-func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {
+func closeChan(taskChan chan Task) {
+	if _, ok := <-taskChan; ok {
+		log.Printf("CLOSE CHAN")
+		close(taskChan)
+	}
+}
+
+func sendTasks(taskChan chan Task, tasks []Task, stopChan chan struct{}) {
 	// Отправляет таски в канал taskChan
-	defer close(taskChan)
+	defer closeChan(taskChan)
 	for _, task := range tasks {
 		select {
 		case taskChan <- task:
@@ -83,7 +91,7 @@ func sendTasks(taskChan chan<- Task, tasks []Task, stopChan chan struct{}) {
 	}
 }
 
-func checkErr(errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
+func checkErr(taskChan chan Task, errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
 	// Проверяет количество таков с ошибкой и прерывает работу оставшихся
 	for err := range errorChan {
 		if err != nil {
@@ -91,6 +99,7 @@ func checkErr(errorChan chan error, stopChan chan struct{}, m int, errorCount *i
 			m32 := int32(m)
 			if *errorCount >= m32 {
 				stopChan <- struct{}{}
+				closeChan(taskChan)
 				return
 			}
 		}

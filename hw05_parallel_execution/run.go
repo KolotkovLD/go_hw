@@ -13,10 +13,10 @@ type Task func() error
 
 // Run starts tasks in n goroutines and stops its work when receiving m errors from tasks.
 func Run(tasks []Task, n, m int) error {
-
 	var (
-		wg         sync.WaitGroup
-		errorCount int32
+		wg            sync.WaitGroup
+		errorCount    int32
+		runTasksCount int32
 	)
 
 	if m <= 0 {
@@ -29,27 +29,33 @@ func Run(tasks []Task, n, m int) error {
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go runTask(&wg, taskChan, errorChan, stopChan, i, &errorCount)
+		go runTask(&wg, taskChan, errorChan, stopChan, i, &errorCount, m, n, &runTasksCount)
 	}
 	// Заполняем канал заданий
 	go sendTasks(taskChan, tasks, stopChan)
 
 	// Обрабатываем ошибки
-	go checkErr(taskChan, errorChan, stopChan, m, &errorCount)
+	go checkErr(errorChan, stopChan, m, &errorCount)
 
 	wg.Wait()
 	close(errorChan)
-	close(stopChan)
 
-	m32 := int32(m)
-	if errorCount >= m32 {
+	if atomic.LoadInt32(&errorCount) >= int32(m) {
 		return ErrErrorsLimitExceeded
 	}
 
 	return nil
 }
 
-func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, stopChan chan struct{}, workerID int, errorCount *int32) {
+func runTask(wg *sync.WaitGroup,
+	taskChan chan Task,
+	errorChan chan<- error,
+	stopChan chan struct{},
+	workerID int,
+	errorCount *int32,
+	m int, n int,
+	runTasksCount *int32,
+) {
 	// Запускает таски из канала taskChan
 	defer wg.Done()
 	log.Printf("Goroutine %d: started\n", workerID)
@@ -67,21 +73,25 @@ func runTask(wg *sync.WaitGroup, taskChan chan Task, errorChan chan<- error, sto
 			if err := task(); err != nil {
 				log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
 				errorChan <- err
+				atomic.AddInt32(runTasksCount, 1)
+				if (int32(n) + int32(m)) <= atomic.LoadInt32(runTasksCount) {
+					log.Printf("     Goroutine %d: error \n", workerID)
+					<-stopChan
+					return
+				}
+				select {
+				case errorChan <- err:
+				case <-stopChan:
+					return
+				}
 			}
 		}
 	}
 }
 
-func closeChan(taskChan chan Task) {
-	if _, ok := <-taskChan; ok {
-		log.Printf("CLOSE CHAN")
-		close(taskChan)
-	}
-}
-
 func sendTasks(taskChan chan Task, tasks []Task, stopChan chan struct{}) {
 	// Отправляет таски в канал taskChan
-	defer closeChan(taskChan)
+	defer close(taskChan)
 	for _, task := range tasks {
 		select {
 		case taskChan <- task:
@@ -91,15 +101,14 @@ func sendTasks(taskChan chan Task, tasks []Task, stopChan chan struct{}) {
 	}
 }
 
-func checkErr(taskChan chan Task, errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
+func checkErr(errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
 	// Проверяет количество таков с ошибкой и прерывает работу оставшихся
 	for err := range errorChan {
+		log.Printf("checkErr: err: %v", err)
 		if err != nil {
-			atomic.AddInt32(errorCount, 1)
-			m32 := int32(m)
-			if *errorCount >= m32 {
+			if atomic.AddInt32(errorCount, 1) >= int32(m) {
 				stopChan <- struct{}{}
-				closeChan(taskChan)
+				close(stopChan)
 				return
 			}
 		}

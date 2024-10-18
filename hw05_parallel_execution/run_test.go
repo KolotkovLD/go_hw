@@ -67,20 +67,19 @@ func TestRun(t *testing.T) {
 		require.Equal(t, runTasksCount, int32(tasksCount), "not all tasks were completed")
 		require.LessOrEqual(t, int64(elapsedTime), int64(sumTime/2), "tasks were run sequentially?")
 	})
-}
 
-//	t.Run("test checkErr", func(t *testing.T) {
-//		var errorCount int32
-//		m := 1
-//
-//		errorChan := make(chan error, 1)
-//		stopChan := make(chan struct{})
-//
-//		//atomic.AddInt32(&errorCount, 9)
-//		errorChan <- fmt.Errorf("error task")
-//		go checkErr(errorChan, stopChan, m, &errorCount)
-//		time.Sleep(1 * time.Second)
-//		close(errorChan)
-//		require.Equal(t, int32(m), atomic.LoadInt32(&errorCount))
-//	})
-//}
+	t.Run("test checkErr", func(t *testing.T) {
+		var errorCount int32
+		m := 10
+
+		errorChan := make(chan error, 1)
+		stopChan := make(chan struct{}, 10)
+
+		atomic.AddInt32(&errorCount, 9)
+		errorChan <- fmt.Errorf("error task")
+		go checkErr(errorChan, stopChan, m, &errorCount)
+		time.Sleep(1 * time.Second)
+		close(errorChan)
+		require.Equal(t, int32(m), atomic.LoadInt32(&errorCount))
+	})
+}

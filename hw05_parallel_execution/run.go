@@ -2,7 +2,6 @@ package hw05parallelexecution
 
 import (
 	"errors"
-	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -27,15 +26,17 @@ func Run(tasks []Task, n, m int) error {
 	stopChan := make(chan struct{})
 	taskChan := make(chan Task, len(tasks))
 
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go runTask(&wg, taskChan, errorChan, stopChan, i, &errorCount, m, n, &runTasksCount)
-	}
 	// Заполняем канал заданий
 	go sendTasks(taskChan, tasks, stopChan)
 
 	// Обрабатываем ошибки
 	go checkErr(errorChan, stopChan, m, &errorCount)
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go runTask(&wg, taskChan, errorChan, stopChan, m, n, &runTasksCount)
+	}
+	// i, &errorCount
 
 	wg.Wait()
 	close(errorChan)
@@ -51,31 +52,31 @@ func runTask(wg *sync.WaitGroup,
 	taskChan chan Task,
 	errorChan chan<- error,
 	stopChan chan struct{},
-	workerID int,
-	errorCount *int32,
 	m int, n int,
 	runTasksCount *int32,
 ) {
+	// workerID int,
+	//	errorCount *int32,
 	// Запускает таски из канала taskChan
 	defer wg.Done()
-	log.Printf("Goroutine %d: started\n", workerID)
+	// log.Printf("Goroutine %d: started\n", workerID)
 	for {
 		select {
 		case <-stopChan:
-			log.Printf("Goroutine %d: stopChan closed, exiting\n", workerID)
+			// log.Printf("Goroutine %d: stopChan closed, exiting\n", workerID)
 			return
 		case task, ok := <-taskChan:
 			if !ok {
-				log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
+				// log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
 				return
 			}
-			log.Printf("Goroutine %d: received a task\n", workerID)
+			// log.Printf("Goroutine %d: received a task\n", workerID)
 			if err := task(); err != nil {
-				log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
+				// log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
 				errorChan <- err
 				atomic.AddInt32(runTasksCount, 1)
 				if (int32(n) + int32(m)) <= atomic.LoadInt32(runTasksCount) {
-					log.Printf("     Goroutine %d: error \n", workerID)
+					// log.Printf("     Goroutine %d: error \n", workerID)
 					<-stopChan
 					return
 				}
@@ -104,7 +105,7 @@ func sendTasks(taskChan chan Task, tasks []Task, stopChan chan struct{}) {
 func checkErr(errorChan chan error, stopChan chan struct{}, m int, errorCount *int32) {
 	// Проверяет количество таков с ошибкой и прерывает работу оставшихся
 	for err := range errorChan {
-		log.Printf("checkErr: err: %v", err)
+		// log.Printf("checkErr: err: %v", err)
 		if err != nil {
 			if atomic.AddInt32(errorCount, 1) >= int32(m) {
 				stopChan <- struct{}{}

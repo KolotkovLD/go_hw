@@ -7,17 +7,17 @@ import (
 	"os"
 )
 
-//var (
+// var (
 //	from, to      string
 //	limit, offset int64
-//)
+// )
 //
-//func init() {
+// func init() {
 //	flag.StringVar(&from, "from", "", "file to read from")
 //	flag.StringVar(&to, "to", "", "file to write to")
 //	flag.Int64Var(&limit, "limit", 0, "limit of bytes to copy")
 //	flag.Int64Var(&offset, "offset", 0, "offset in input file")
-//}
+// }
 
 func main() {
 	flag.Parse()
@@ -27,7 +27,7 @@ func main() {
 	limit := flag.Int64("limit", 0, "Number of bytes to copy (0 means entire file)")
 
 	if *from == "" || *to == "" {
-		fmt.Println("Both -from and to arguments are requred")
+		fmt.Println("Both -from and to arguments are required")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -36,5 +36,4 @@ func main() {
 		log.Fatalf("ERROR: %v\n", err)
 	}
 	fmt.Printf("File %s copied to %s\n", *from, *to)
-
 }

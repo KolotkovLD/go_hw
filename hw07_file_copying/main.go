@@ -31,7 +31,7 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	err := Copy(*from, *to, *offset, *limit)
+	err := CopyFile(*from, *to, *offset, *limit)
 	if err != nil {
 		log.Fatalf("ERROR: %v\n", err)
 	}

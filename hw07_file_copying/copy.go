@@ -24,7 +24,7 @@ func CopyFile(from, to string, offset, limit int64) error {
 		return err
 	}
 	if offset > fi.Size() {
-		return fmt.Errorf("offset is larger than filesize \n")
+		return fmt.Errorf("Offset is larger than filesize \n")
 	}
 
 	if limit == 0 || offset+limit > fi.Size() {
@@ -41,7 +41,7 @@ func CopyFile(from, to string, offset, limit int64) error {
 		return err
 	}
 	defer dst.Close()
-	//bar := progressbar.DefaultBytes(limit, "Copying")
+	// bar := progressbar.DefaultBytes(limit, "Copying")
 	_, err = io.Copy(io.MultiWriter(dst), io.LimitReader(src, limit)) // , bar
 	if err != nil {
 		return err

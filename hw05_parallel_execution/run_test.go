@@ -69,17 +69,17 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("test checkErr", func(t *testing.T) {
-		var errorCount int32
+		var errorCount int32 = 9
 		m := 10
 
 		errorChan := make(chan error, 1)
 		stopChan := make(chan struct{}, 10)
 
-		atomic.AddInt32(&errorCount, 9)
+		//atomic.AddInt32(&errorCount, 9)
 		errorChan <- fmt.Errorf("error task")
 		go checkErr(errorChan, stopChan, m, &errorCount)
-		time.Sleep(1 * time.Second)
 		close(errorChan)
+		<-stopChan
 		require.Equal(t, int32(m), atomic.LoadInt32(&errorCount))
 	})
 }

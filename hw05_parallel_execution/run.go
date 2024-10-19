@@ -55,10 +55,9 @@ func runTask(wg *sync.WaitGroup,
 	m int, n int,
 	runTasksCount *int32,
 ) {
-	// workerID int,
-	//	errorCount *int32,
 	// Запускает таски из канала taskChan
 	defer wg.Done()
+	atomic.AddInt32(runTasksCount, 1)
 	// log.Printf("Goroutine %d: started\n", workerID)
 	for {
 		select {
@@ -74,7 +73,6 @@ func runTask(wg *sync.WaitGroup,
 			if err := task(); err != nil {
 				// log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
 				errorChan <- err
-				atomic.AddInt32(runTasksCount, 1)
 				if (int32(n) + int32(m)) <= atomic.LoadInt32(runTasksCount) {
 					// log.Printf("     Goroutine %d: error \n", workerID)
 					<-stopChan

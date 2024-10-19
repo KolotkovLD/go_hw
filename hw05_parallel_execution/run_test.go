@@ -75,7 +75,6 @@ func TestRun(t *testing.T) {
 		errorChan := make(chan error, 1)
 		stopChan := make(chan struct{}, 10)
 
-		//atomic.AddInt32(&errorCount, 9)
 		errorChan <- fmt.Errorf("error task")
 		go checkErr(errorChan, stopChan, m, &errorCount)
 		close(errorChan)

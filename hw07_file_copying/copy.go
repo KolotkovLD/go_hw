@@ -24,7 +24,7 @@ func CopyFile(from, to string, offset, limit int64) error {
 		return err
 	}
 	if offset > fi.Size() {
-		return fmt.Errorf("Offset is larger than filesize \n")
+		return fmt.Errorf("offset is larger than filesize")
 	}
 
 	if limit == 0 || offset+limit > fi.Size() {

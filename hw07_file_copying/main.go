@@ -15,7 +15,7 @@ func main() {
 	limit := flag.Int64("limit", 0, "Number of bytes to copy (0 means entire file)")
 
 	if *from == "" || *to == "" {
-		fmt.Println("Both -from and to arguments are requred")
+		fmt.Println("Both -from and to arguments are required")
 		flag.Usage()
 		os.Exit(1)
 	}

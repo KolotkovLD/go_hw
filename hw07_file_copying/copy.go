@@ -1,15 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
-)
-
-var (
-	ErrUnsupportedFile       = errors.New("unsupported file")
-	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
 )
 
 func CopyFile(from, to string, offset, limit int64) error {
@@ -40,7 +34,7 @@ func CopyFile(from, to string, offset, limit int64) error {
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	// defer dst.Close()
 	// bar := progressbar.DefaultBytes(limit, "Copying")
 	_, err = io.Copy(io.MultiWriter(dst), io.LimitReader(src, limit)) // , bar
 	if err != nil {

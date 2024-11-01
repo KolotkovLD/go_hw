@@ -23,11 +23,10 @@ func Run(tasks []Task, n, m int) error {
 		m = len(tasks) + 1
 	}
 
-	//errorChan := make(chan error, len(tasks))
-	taskChan := make(chan Task, len(tasks))
+	taskChan := make(chan Task)
 
 	// Заполняем канал заданий
-	go sendTasks(taskChan, tasks, &errorCount, &runTasksCount, n, m)
+	go sendTasks(taskChan, tasks, &errorCount, m)
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
@@ -35,7 +34,7 @@ func Run(tasks []Task, n, m int) error {
 	}
 
 	wg.Wait()
-	if atomic.LoadInt32(&errorCount) >= int32(m) || (int32(n)+int32(m)) <= atomic.LoadInt32(&runTasksCount) {
+	if atomic.LoadInt32(&errorCount) >= int32(m) && (int32(n)+int32(m)) <= atomic.LoadInt32(&runTasksCount) {
 		return ErrErrorsLimitExceeded
 	}
 	return nil
@@ -47,7 +46,6 @@ func runTask(wg *sync.WaitGroup,
 	runTasksCount *int32,
 	workerID int,
 ) {
-
 	// Запускает таски из канала taskChan
 	defer wg.Done()
 	log.Printf("Goroutine %d: started\n", workerID)
@@ -56,14 +54,13 @@ func runTask(wg *sync.WaitGroup,
 		atomic.AddInt32(runTasksCount, 1)
 		log.Printf("Goroutine %d: received a task, runTasksCount: %d\n", workerID, *runTasksCount)
 		if !ok {
-			// log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
+			log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
 			return
 		}
 
 		if err := task(); err != nil {
 			atomic.AddInt32(errorCount, 1)
 			log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
-			return
 		}
 	}
 }
@@ -71,21 +68,16 @@ func runTask(wg *sync.WaitGroup,
 func sendTasks(taskChan chan Task,
 	tasks []Task,
 	errorCount *int32,
-	runTasksCount *int32,
-	n int,
 	m int,
 ) {
 	// Отправляет таски в канал taskChan
-	defer close(taskChan)
+	defer func() {
+		close(taskChan)
+		log.Printf("sendTasks is done!!!!!!!")
+	}()
 	for _, task := range tasks {
 		if atomic.LoadInt32(errorCount) >= int32(m) {
-			log.Printf(" [sendTasks] >=m   errorCount: %d\n", errorCount)
-			close(taskChan)
-			return
-		}
-		if (int32(n) + int32(m)) <= atomic.LoadInt32(runTasksCount) {
-			log.Printf(" [sendTasks] <= m+n   runTasksCount: %d\n", runTasksCount)
-			close(taskChan)
+			log.Printf(" [sendTasks] >=m   errorCount: %d\n", *errorCount)
 			return
 		}
 		taskChan <- task

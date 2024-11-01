@@ -26,7 +26,7 @@ func Run(tasks []Task, n, m int) error {
 	taskChan := make(chan Task)
 
 	// Заполняем канал заданий
-	go sendTasks(taskChan, tasks, &errorCount, m)
+	go sendTasks(taskChan, tasks, &errorCount, &runTasksCount, n, m)
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
@@ -68,6 +68,8 @@ func runTask(wg *sync.WaitGroup,
 func sendTasks(taskChan chan Task,
 	tasks []Task,
 	errorCount *int32,
+	runTasksCount *int32,
+	n int,
 	m int,
 ) {
 	// Отправляет таски в канал taskChan
@@ -76,7 +78,7 @@ func sendTasks(taskChan chan Task,
 		log.Printf("sendTasks is done!!!!!!!")
 	}()
 	for _, task := range tasks {
-		if atomic.LoadInt32(errorCount) >= int32(m) {
+		if atomic.LoadInt32(errorCount) >= int32(m) && (int32(n)+int32(m)) <= atomic.LoadInt32(runTasksCount) {
 			log.Printf(" [sendTasks] >=m   errorCount: %d\n", *errorCount)
 			return
 		}

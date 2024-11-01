@@ -54,11 +54,12 @@ func runTask(wg *sync.WaitGroup,
 	for {
 		task, ok := <-taskChan
 		atomic.AddInt32(runTasksCount, 1)
+		log.Printf("Goroutine %d: received a task, runTasksCount: %d\n", workerID, *runTasksCount)
 		if !ok {
 			// log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
 			return
 		}
-		log.Printf("Goroutine %d: received a task\n", workerID)
+
 		if err := task(); err != nil {
 			atomic.AddInt32(errorCount, 1)
 			log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)

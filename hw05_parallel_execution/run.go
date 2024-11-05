@@ -26,15 +26,15 @@ func Run(tasks []Task, n, m int) error {
 	taskChan := make(chan Task)
 
 	// Заполняем канал заданий
-	go sendTasks(taskChan, tasks, &errorCount, &runTasksCount, n, m)
+	go sendTasks(taskChan, tasks, &errorCount, &runTasksCount, m)
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go runTask(&wg, taskChan, &errorCount, &runTasksCount, i, n, m)
+		go runTask(&wg, taskChan, &errorCount, &runTasksCount, i, m)
 	}
 
 	wg.Wait()
-	if stopRule(&errorCount, &runTasksCount, n, m) {
+	if stopRule(&errorCount, &runTasksCount, m) {
 		return ErrErrorsLimitExceeded
 	}
 	return nil
@@ -45,7 +45,6 @@ func runTask(wg *sync.WaitGroup,
 	errorCount *atomic.Int32,
 	runTasksCount *atomic.Int32,
 	workerID int,
-	n int,
 	m int,
 ) {
 	// Запускает таски из канала taskChan
@@ -55,7 +54,7 @@ func runTask(wg *sync.WaitGroup,
 		task, ok := <-taskChan
 		runTasksCount.Add(1)
 		log.Printf("Goroutine %d: received a task, runTasksCount: %d\n", workerID, runTasksCount.Load())
-		if !ok || stopRule(errorCount, runTasksCount, n, m) {
+		if !ok || stopRule(errorCount, runTasksCount, m) {
 			log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
 			return
 		}
@@ -71,7 +70,6 @@ func sendTasks(taskChan chan Task,
 	tasks []Task,
 	errorCount *atomic.Int32,
 	runTasksCount *atomic.Int32,
-	n int,
 	m int,
 ) {
 	// Отправляет таски в канал taskChan
@@ -80,7 +78,7 @@ func sendTasks(taskChan chan Task,
 		log.Printf("sendTasks is done!!!!!!!")
 	}()
 	for _, task := range tasks {
-		if stopRule(errorCount, runTasksCount, n, m) {
+		if stopRule(errorCount, runTasksCount, m) {
 			log.Printf("     [sendTasks]  errorCount: %d ; runTasksCount: %d\n", errorCount.Load(), runTasksCount.Load())
 			return
 		}
@@ -88,7 +86,7 @@ func sendTasks(taskChan chan Task,
 	}
 }
 
-func stopRule(errorCount *atomic.Int32, runTasksCount *atomic.Int32, n, m int) bool {
+func stopRule(errorCount *atomic.Int32, runTasksCount *atomic.Int32, m int) bool {
 	if errorCount.Load() >= int32(m) {
 		log.Printf(" [stop_rule]  errorCount: %d ; runTasksCount: %d\n", errorCount.Load(), runTasksCount.Load())
 		return true

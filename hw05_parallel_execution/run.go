@@ -15,8 +15,8 @@ type Task func() error
 func Run(tasks []Task, n, m int) error {
 	var (
 		wg            sync.WaitGroup
-		errorCount    int32
-		runTasksCount int32
+		errorCount    atomic.Int32
+		runTasksCount atomic.Int32
 	)
 
 	if m <= 0 {
@@ -42,8 +42,8 @@ func Run(tasks []Task, n, m int) error {
 
 func runTask(wg *sync.WaitGroup,
 	taskChan chan Task,
-	errorCount *int32,
-	runTasksCount *int32,
+	errorCount *atomic.Int32,
+	runTasksCount *atomic.Int32,
 	workerID int,
 	n int,
 	m int,
@@ -53,24 +53,24 @@ func runTask(wg *sync.WaitGroup,
 	log.Printf("Goroutine %d: started\n", workerID)
 	for {
 		task, ok := <-taskChan
-		atomic.AddInt32(runTasksCount, 1)
-		log.Printf("Goroutine %d: received a task, runTasksCount: %d\n", workerID, *runTasksCount)
+		runTasksCount.Add(1)
+		log.Printf("Goroutine %d: received a task, runTasksCount: %d\n", workerID, runTasksCount.Load())
 		if !ok || stopRule(errorCount, runTasksCount, n, m) {
 			log.Printf("Goroutine %d: taskChan closed, exiting\n", workerID)
 			return
 		}
 
 		if err := task(); err != nil {
-			atomic.AddInt32(errorCount, 1)
-			log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, *errorCount)
+			errorCount.Add(1)
+			log.Printf("Goroutine %d: task returned error: %v, errorCount: %d\n", workerID, err, errorCount.Load())
 		}
 	}
 }
 
 func sendTasks(taskChan chan Task,
 	tasks []Task,
-	errorCount *int32,
-	runTasksCount *int32,
+	errorCount *atomic.Int32,
+	runTasksCount *atomic.Int32,
 	n int,
 	m int,
 ) {
@@ -81,16 +81,16 @@ func sendTasks(taskChan chan Task,
 	}()
 	for _, task := range tasks {
 		if stopRule(errorCount, runTasksCount, n, m) {
-			log.Printf("     [sendTasks]  errorCount: %d ; runTasksCount: %d\n", *errorCount, *runTasksCount)
+			log.Printf("     [sendTasks]  errorCount: %d ; runTasksCount: %d\n", errorCount.Load(), runTasksCount.Load())
 			return
 		}
 		taskChan <- task
 	}
 }
 
-func stopRule(errorCount *int32, runTasksCount *int32, n, m int) bool {
-	if atomic.LoadInt32(errorCount) >= int32(m) && (int32(n)+int32(m)) <= atomic.LoadInt32(runTasksCount) {
-		log.Printf(" [stop_rule]  errorCount: %d ; runTasksCount: %d\n", *errorCount, *runTasksCount)
+func stopRule(errorCount *atomic.Int32, runTasksCount *atomic.Int32, n, m int) bool {
+	if errorCount.Load() >= int32(m) {
+		log.Printf(" [stop_rule]  errorCount: %d ; runTasksCount: %d\n", errorCount.Load(), runTasksCount.Load())
 		return true
 	}
 	return false

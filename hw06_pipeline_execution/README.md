@@ -5,7 +5,11 @@
 ```golang
 func Stage(in <-chan interface{}) (out <-chan interface{}) {
     out = make(chan interface{})
-    go func() { /* Some work */ }()
+    go func() { 
+		for i := range in{
+			//task()
+        }
+	}()
     return out
 }
 ```

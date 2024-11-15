@@ -2,100 +2,62 @@ package hw06pipelineexecution
 
 import (
 	"log"
-	"sync"
 )
 
 type (
-	In  = chan interface{}
+	In  = <-chan interface{}
 	Out = In
-	Bi  = chan interface{}
+	Bi  = chan interface{} // нужно заменить на context
 )
 
+// Stage является исполнителем задач на шаге
+// слушает канал задач и кладет результат в канал результатов
 type Stage func(in In) (out Out)
 
-//func Stage(in In) (out Out) {
-//	out = make(chan interface{})
-//	go func() {
-//		defer close(out)
-//		for input := range in {
-//			log.Println("Stage processing.")
-//
-//			result := func(input interface{}) int {
-//				log.Println(input)
-//				return 0
-//			}(input)
-//			out <- result
-//		}
-//	}()
-//	return out
-//}
-
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
-	//
-	//for _, stage := range stages {
-	//	in = stage(in)
-	//}
-	//
-	//return nil
+	out := make(Bi)
 
-	wg := &sync.WaitGroup{} // Для синхронизации завершения всех горутин
-
-	// Канал для распространения сигнала завершения
-	stop := make(Bi)
-
-	// Функция для закрытия выходных каналов при завершении работы
-	closeOutput := func(out Out) {
-		if out != nil {
-			select {
-			case <-done:
-				log.Println("Pipeline stopped")
-			default:
-				close(out)
-			}
-		}
-	}
-
-	// Входной канал передается первому этапу
-	currentIn := in
-
-	// Проходим по всем этапам
+	//инициализация стейджей
 	for _, stage := range stages {
-		currentOut := make(Out)
-
-		// Увеличиваем счетчик WaitGroup перед запуском новой горутины
-		wg.Add(1)
-		log.Println(" -  Новая горутина")
-
-		// Запускаем горутину для выполнения этапа
-		go func(in In, out Out, stop Bi) {
-			defer wg.Done()
-			defer closeOutput(out)
-
-			// Вызываем этап
-			out = stage(in)
-			log.Println(" -  Вызов этапов")
-
-			// Передаем результат следующему этапу
-			for v := range out {
-				select {
-				case <-stop:
-					log.Println("Закрываем горутину")
-					return
-				case out <- v:
-					log.Println("Передаём результат")
-				}
-			}
-		}(currentIn, currentOut, stop)
-
-		// Следующий этап получает данные из выхода текущего
-		currentIn = currentOut
+		in = stage(in)
+		log.Println("Stage is started")
 	}
 
-	// Ожидаем завершения всех горутин
-	//go func() {
-	wg.Wait()
-	close(stop)
-	//}()
+	go func() {
+		select {
+		case <-done:
+			close(out)
+			return
+		case val, ok := <-in:
+			log.Println("Read input value")
+			if !ok {
+				log.Println("In chanel is empty")
+				close(out)
+				return
+			}
+			out <- val
+		}
+	}()
 
-	return currentIn
+	return out
 }
+
+//
+//
+//func tryRunPipe() {
+//	in := make(Bi)
+//	done := make(Bi)
+//	stages := []Stage{}
+//	out := ExecutePipeline(in, done, stages...)
+//	go func() {
+//		for result := range out {
+//			fmt.Println(result)
+//		}
+//		log.Println("Pipe is done")
+//	}()
+//
+//	in <- 1
+//	in <- 45
+//	done <- struct{}{}
+//
+//}

@@ -3,10 +3,11 @@
 
 Стейдж - функция, принимающая канал на чтение и отдающая канал на чтение, внутри в горутине берущая данные из входного канала, выполняющая полезную работу и отдающая результат в выходной канал:
 ```golang
-func Stage(in <-chan interface{}) (out <-chan interface{}) {
+Stage(in <-chan interface{}) (out <-chan interface{}) {
     out = make(chan interface{})
     go func() { 
 		for i := range in{
+			log.Println("start task")
 			//task()
         }
 	}()

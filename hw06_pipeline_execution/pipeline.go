@@ -11,31 +11,34 @@ type (
 )
 
 // Stage является исполнителем задач на шаге
-// слушает канал задач и кладет результат в канал результатов
+// слушает канал задач и кладет результат в канал результатов.
 type Stage func(in In) (out Out)
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	out := make(Bi)
 
-	//инициализация стейджей
+	// инициализация стейджей
 	for _, stage := range stages {
 		in = stage(in)
 		log.Println("Stage is started")
 	}
 
 	go func() {
-		select {
-		case <-done:
-			close(out)
-			return
-		case val, ok := <-in:
-			log.Println("Read input value")
-			if !ok {
-				log.Println("In chanel is empty")
+		for {
+			select {
+			case <-done:
+				log.Println("is done")
 				close(out)
 				return
+			case val, ok := <-in:
+				log.Println("Read input value")
+				if !ok {
+					log.Println("In chanel is empty")
+					close(out)
+					return
+				}
+				out <- val
 			}
-			out <- val
 		}
 	}()
 
@@ -44,7 +47,7 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 
 //
 //
-//func tryRunPipe() {
+// func tryRunPipe() {
 //	in := make(Bi)
 //	done := make(Bi)
 //	stages := []Stage{}

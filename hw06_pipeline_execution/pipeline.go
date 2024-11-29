@@ -29,6 +29,7 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 			case <-done:
 				log.Println("is done")
 				close(out)
+				<-in
 				return
 			case val, ok := <-in:
 				log.Println("Read input value")
@@ -44,23 +45,3 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 
 	return out
 }
-
-//
-//
-// func tryRunPipe() {
-//	in := make(Bi)
-//	done := make(Bi)
-//	stages := []Stage{}
-//	out := ExecutePipeline(in, done, stages...)
-//	go func() {
-//		for result := range out {
-//			fmt.Println(result)
-//		}
-//		log.Println("Pipe is done")
-//	}()
-//
-//	in <- 1
-//	in <- 45
-//	done <- struct{}{}
-//
-//}

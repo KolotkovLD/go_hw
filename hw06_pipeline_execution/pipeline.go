@@ -5,8 +5,8 @@ import (
 )
 
 type (
-	In  = <-chan interface{}
-	Out = In
+	In  = chan interface{}
+	Out = chan interface{}
 	Bi  = chan interface{} // нужно заменить на context
 )
 

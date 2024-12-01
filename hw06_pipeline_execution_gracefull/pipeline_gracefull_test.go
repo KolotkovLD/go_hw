@@ -1,17 +1,20 @@
-package hw06pipelineexecutionpoolofworkers
+package hw06pipelineexecutiongracefull
 
 import (
 	"context"
-	"sync"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+)
+
+const (
+	sleepPerStage = time.Millisecond * 100
+	fault         = sleepPerStage / 2
 )
 
 func TestPipeline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-
-	requests := make(chan any)
 
 	// Определим стадии пайплайна
 	stages := []Stage{
@@ -45,22 +48,22 @@ func TestPipeline(t *testing.T) {
 		},
 	}
 
+	in := make(In)
+
 	// Запустим пайплайн
-	pipeline := ExecutePipeline(ctx, requests, stages...)
-
-	// Слушатель запросов
-	wg := &sync.WaitGroup{}
-	go listenAndServe(ctx, wg, pipeline)
-
-	// Имитация отправки запросов
-	go func() {
-		for i := 0; i < 10; i++ {
-			requests <- i
-		}
-		close(requests)
-	}()
-
+	result := make([]string, 0, 10)
+	start := time.Now()
+	for s := range ExecutePipeline(in, nil, stages...) {
+		result = append(result, s.(string))
+	}
 	// Завершение работы
 
-	gracefullShutdown(ctx, wg, 30*time.Second)
+	gracefulShutdown(ctx, wg, 30*time.Second)
+
+	elapsed := time.Since(start)
+	require.Less(t,
+		int64(elapsed),
+		// ~0.8s for processing 5 values in 4 stages (100ms every) concurrently
+		int64(sleepPerStage)*int64(len(stages)+len(data)-1)+int64(fault))
+
 }
